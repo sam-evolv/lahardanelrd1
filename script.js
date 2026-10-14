@@ -54,4 +54,68 @@ document.addEventListener('DOMContentLoaded', function () {
       if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
     });
   });
+
+  // 5) Document pages: count per section, plus a filter on longer pages
+  var tables = Array.prototype.slice.call(document.querySelectorAll('main .table-container'));
+  if (tables.length) {
+    var allRows = Array.prototype.slice.call(document.querySelectorAll('main .table-container tbody tr'));
+    var total = allRows.length;
+    var docs = function (n) { return n + (n === 1 ? ' document' : ' documents'); };
+
+    // count badge on each section heading
+    tables.forEach(function (tc) {
+      var head = tc.previousElementSibling;
+      if (head && head.classList.contains('section-subhead')) {
+        var badge = document.createElement('span');
+        badge.className = 'subhead-count';
+        badge.textContent = tc.querySelectorAll('tbody tr').length;
+        head.appendChild(badge);
+      }
+    });
+
+    // toolbar above the first section
+    var first = tables[0].previousElementSibling && tables[0].previousElementSibling.classList.contains('section-subhead')
+      ? tables[0].previousElementSibling : tables[0];
+    var bar = document.createElement('div');
+    bar.className = 'doc-toolbar';
+    var count = document.createElement('p');
+    count.className = 'doc-count';
+    count.setAttribute('aria-live', 'polite');
+    count.textContent = docs(total);
+    bar.appendChild(count);
+    first.parentNode.insertBefore(bar, first);
+
+    if (total >= 10) {
+      var wrap = document.createElement('div');
+      wrap.className = 'doc-filter';
+      wrap.innerHTML = '<i class="fas fa-magnifying-glass" aria-hidden="true"></i>' +
+        '<input type="search" placeholder="Filter documents…" aria-label="Filter documents by title">';
+      bar.appendChild(wrap);
+      var empty = document.createElement('div');
+      empty.className = 'doc-empty';
+      empty.hidden = true;
+      empty.textContent = 'No documents match your search.';
+      bar.parentNode.insertBefore(empty, bar.nextSibling);
+
+      wrap.querySelector('input').addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        var shown = 0;
+        tables.forEach(function (tc) {
+          var visible = 0;
+          tc.querySelectorAll('tbody tr').forEach(function (tr) {
+            var title = (tr.cells[0] ? tr.cells[0].textContent : '').toLowerCase();
+            var match = !q || title.indexOf(q) !== -1;
+            tr.hidden = !match;
+            if (match) visible++;
+          });
+          tc.hidden = visible === 0;
+          var head = tc.previousElementSibling;
+          if (head && head.classList.contains('section-subhead')) head.hidden = visible === 0;
+          shown += visible;
+        });
+        count.textContent = q ? shown + ' of ' + docs(total) : docs(total);
+        empty.hidden = shown !== 0;
+      });
+    }
+  }
 });
